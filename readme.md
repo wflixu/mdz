@@ -1,10 +1,10 @@
 # mdz
 
-A Rust library and CLI tool for defining, packaging, and unpacking a custom Markdown-based file format with embedded image resources.
+A Rust library and CLI tool for defining, packaging, and unpacking a custom Markdown-based file format with embedded resources.
 
 ## Features
 
-- **Custom File Format**: Defines a new format for bundling Markdown content and its associated images.
+- **Custom File Format**: Defines a new format for bundling Markdown content and its associated assets (images, videos, audio, and other files).
 - **Rust Library**: Core logic implemented as a reusable Rust library ([`mdz-rs`](mdz-rs/)).
 - **CLI Tool**: Command-line utility ([`mdz`](mdz/)) for packing and unpacking `.mdz` files.
 - **Easy Integration**: Designed for use in other Rust projects or as a standalone tool.
@@ -52,10 +52,10 @@ Import and use the core functionality in your Rust code. See [mdz-rs/src/lib.rs]
 
 ### As a CLI Tool
 
-- **Pack** a Markdown file and images into an `.mdz` archive:
+- **Pack** a Markdown file and assets into an `.mdz` archive:
 
     ```sh
-    mdz pack input.md images/ output.mdz
+    mdz pack input.md assets/ output.mdz
     ```
 
 - **Unpack** an `.mdz` archive:
@@ -67,7 +67,12 @@ Import and use the core functionality in your Rust code. See [mdz-rs/src/lib.rs]
 ## File Format
 
 - Supports standard Markdown syntax.
-- Bundles Markdown content and all referenced images into a single portable file.
+- Bundles Markdown content and all referenced assets (images, videos, audio, files) into a single portable file.
+- Assets are organized in the `assets/` directory with subdirectories by type:
+  - `assets/images/` - Image files
+  - `assets/videos/` - Video files
+  - `assets/audio/` - Audio files
+  - `assets/files/` - Other attachments
 - See [mdz-spec.md](mdz-spec.md) for detailed specification.
 
 ## Contributing

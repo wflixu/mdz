@@ -23,10 +23,15 @@ An MDZ file is a **ZIP** archive with a predefined directory structure:
 archive.mdz (ZIP archive)
 ├── index.md           # Main Markdown content
 ├── manifest.json      # Metadata and asset mapping (required)
-├── media/             # Directory for embedded media files (optional)
-│   ├── image1.png
-│   └── video1.mp4
-└── attachments/       # Directory for attached files (optional)
+└── assets/            # Directory for all embedded assets (optional)
+    ├── images/
+    │   └── image1.png
+    ├── videos/
+    │   └── video1.mp4
+    ├── audio/
+    │   └── audio1.mp3
+    └── files/
+        └── document.pdf
 ```
 
 ### Required Components
@@ -38,10 +43,13 @@ archive.mdz (ZIP archive)
 
 ### Optional Components
 
-| Directory      | Description                                             |
-| -------------- | ------------------------------------------------------- |
-| `media/`       | Contains images, videos, audio, or other embedded media |
-| `attachments/` | Contains non-media attachments (e.g., PDFs)             |
+| Directory  | Description                                      |
+| ---------- | ------------------------------------------------ |
+| `assets/`  | Contains all embedded assets organized by type   |
+- `assets/images/` - Image files (PNG, JPG, SVG, etc.)
+- `assets/videos/` - Video files (MP4, WebM, etc.)
+- `assets/audio/` - Audio files (MP3, WAV, etc.)
+- `assets/files/` - Other file attachments (PDFs, docs, etc.) |
 
 ---
 
@@ -56,13 +64,13 @@ archive.mdz (ZIP archive)
   "assets": [
     {
       "id": "img1",
-      "path": "media/image1.png",
+      "path": "assets/images/image1.png",
       "type": "image",
       "alt": "An example image"
     },
     {
       "id": "vid1",
-      "path": "media/video1.mp4",
+      "path": "assets/videos/video1.mp4",
       "type": "video",
       "title": "Intro Video"
     }
@@ -140,6 +148,8 @@ Renderers or parsers MUST resolve `assets://` URIs by referring to `manifest.jso
 * Table of contents or navigation map in manifest.json
 * Digital signatures for integrity verification
 * Optional encryption (using AES or other standards)
+* Asset categorization and tagging system
+* Nested directory support within assets folder
 
 ---
 

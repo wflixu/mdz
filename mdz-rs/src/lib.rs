@@ -1,26 +1,471 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use std::collections::HashMap;
+use std::fs;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use anyhow::{anyhow, Result};
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use url::Url;
 
-pub fn pack(input_dir: &str, output_file: &str) -> anyhow::Result<()> {
-    println!("Packing '{}' into '{}'", input_dir, output_file);
-    // TODO: 实现 ZIP 打包逻辑
-    Ok(())
-}
-
-pub fn unpack(input_file: &str, output_dir: &str) -> anyhow::Result<()> {
-    println!("Unpacking '{}' into '{}'", input_file, output_dir);
-    // TODO: 实现 ZIP 解压逻辑
-    Ok(())
-}
-
+// 包含测试模块
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+/// Asset information stored in manifest.json
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Asset {
+    pub id: String,
+    pub path: String,
+    #[serde(rename = "type")]
+    pub asset_type: String,
+    pub alt: Option<String>,
+    pub title: Option<String>,
+}
+
+/// Manifest.json structure
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Manifest {
+    pub version: String,
+    pub title: String,
+    pub author: Option<String>,
+    pub date: Option<String>,
+    pub filename: String,  // 原始 Markdown 文件名
+    pub assets: Vec<Asset>,
+}
+
+/// Determines if a path is a URL or a local path
+pub fn is_url(path: &str) -> bool {
+    Url::parse(path).is_ok()
+}
+
+/// Get asset type based on file extension
+fn get_asset_type(path: &Path) -> String {
+    let extension = path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_lowercase());
+
+    match extension.as_deref() {
+        Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("bmp") |
+        Some("svg") | Some("webp") | Some("ico") => "image".to_string(),
+        Some("mp4") | Some("avi") | Some("mov") | Some("wmv") | Some("webm") |
+        Some("mkv") | Some("flv") => "video".to_string(),
+        Some("mp3") | Some("wav") | Some("ogg") | Some("flac") | Some("aac") => "audio".to_string(),
+        _ => "file".to_string(),
     }
 }
+
+/// Get appropriate subdirectory for asset type
+fn get_asset_subdir(asset_type: &str) -> &'static str {
+    match asset_type {
+        "image" => "images",
+        "video" => "videos",
+        "audio" => "audio",
+        _ => "files",
+    }
+}
+
+/// Download an image from URL to local file
+async fn download_image(url: &str, dest_path: &Path) -> Result<()> {
+    let response = reqwest::get(url).await?;
+
+    if !response.status().is_success() {
+        return Err(anyhow!("Failed to download image: {}", response.status()));
+    }
+
+    let content = response.bytes().await?;
+
+    // Create parent directories if they don't exist
+    if let Some(parent) = dest_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    fs::write(dest_path, content)?;
+    Ok(())
+}
+
+/// Copy local file to destination
+fn copy_local_file(src_path: &Path, dest_path: &Path) -> Result<()> {
+    // Create parent directories if they don't exist
+    if let Some(parent) = dest_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    fs::copy(src_path, dest_path)?;
+    Ok(())
+}
+
+/// Extract image URLs and paths from Markdown content
+fn extract_images_from_markdown(content: &str) -> Vec<(String, Option<String>)> {
+    let mut images = Vec::new();
+
+    // Regex patterns for different Markdown image syntaxes
+    let patterns = vec![
+        // ![alt](url) - standard Markdown image
+        r#"\!\[([^\]]*)\]\(([^)]+)\)"#,
+        // <img src="url" alt="alt"> - HTML img tag
+        r#"<img[^>]+src=["']([^"']+)["'][^>]*>"#,
+    ];
+
+    for pattern in patterns {
+        let regex = Regex::new(pattern).unwrap();
+        for captures in regex.captures_iter(content) {
+            match pattern {
+                p if p.starts_with(r#"\!\["#) => {
+                    // Markdown syntax
+                    let alt = captures.get(1).map(|m| m.as_str().to_string());
+                    let url = captures.get(2).unwrap().as_str().to_string();
+                    images.push((url, alt));
+                }
+                p if p.starts_with(r#"<img"#) => {
+                    // HTML img tag
+                    let url = captures.get(1).unwrap().as_str().to_string();
+                    // Try to extract alt attribute from the full match
+                    let full_match = captures.get(0).unwrap().as_str();
+                    let alt_regex = Regex::new(r#"alt=["']([^"']*)["']"#).unwrap();
+                    let alt = alt_regex.captures(full_match)
+                        .and_then(|c| c.get(1))
+                        .map(|m| m.as_str().to_string());
+                    images.push((url, alt));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    images
+}
+
+/// Update markdown content to use assets:// links
+fn update_markdown_links(content: &str, assets: &[(Asset, String)]) -> Result<String> {
+    let mut updated_content = content.to_string();
+
+    // Create a mapping from original URLs to new assets:// URLs
+    let mut url_mapping: HashMap<String, String> = HashMap::new();
+
+    for (asset, original_url) in assets {
+        let new_url = format!("assets://{}", asset.path);
+        url_mapping.insert(original_url.clone(), new_url);
+    }
+
+    // Update Markdown image links: ![alt](url)
+    let markdown_regex = Regex::new(r#"(\!\[([^\]]*)\]\()([^)]+)\)"#).unwrap();
+    updated_content = markdown_regex.replace_all(&updated_content, |caps: &regex::Captures| {
+        let alt = caps.get(2).unwrap().as_str();     // alt text
+        let url = caps.get(3).unwrap().as_str();     // url
+
+        if let Some(new_url) = url_mapping.get(url) {
+            format!("![{}]({})", alt, new_url)
+        } else {
+            format!("![{}]({})", alt, url)
+        }
+    }).to_string();
+
+    // Update HTML img tags: <img src="url" ...>
+    let html_regex = Regex::new(r#"(<img[^>]+src=["'])([^"']+)(["'][^>]*>)"#).unwrap();
+    updated_content = html_regex.replace_all(&updated_content, |caps: &regex::Captures| {
+        let prefix = caps.get(1).unwrap().as_str();
+        let url = caps.get(2).unwrap().as_str();
+        let suffix = caps.get(3).unwrap().as_str();
+
+        if let Some(new_url) = url_mapping.get(url) {
+            format!("{}{}{}", prefix, new_url, suffix)
+        } else {
+            format!("{}{}{}", prefix, url, suffix)
+        }
+    }).to_string();
+
+    Ok(updated_content)
+}
+
+/// Pack a Markdown file and its assets into an MDZ archive
+pub async fn pack(
+    markdown_file: &str,
+    output_file: &str,
+    title: Option<String>,
+    author: Option<String>,
+) -> Result<()> {
+    // Read the markdown file
+    let markdown_path = Path::new(markdown_file);
+    let markdown_content = fs::read_to_string(markdown_path)?;
+
+    // Extract images from markdown
+    let extracted_images = extract_images_from_markdown(&markdown_content);
+
+    // Create a temporary directory for the MDZ structure
+    let temp_dir = std::env::temp_dir().join(format!("mdz_assets_{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(&temp_dir)?;
+
+    // Create assets directory structure
+    let assets_dir = temp_dir.join("assets");
+    fs::create_dir_all(&assets_dir)?;
+    let images_dir = assets_dir.join("images");
+    let videos_dir = assets_dir.join("videos");
+    let audio_dir = assets_dir.join("audio");
+    let files_dir = assets_dir.join("files");
+    fs::create_dir_all(&images_dir)?;
+    fs::create_dir_all(&videos_dir)?;
+    fs::create_dir_all(&audio_dir)?;
+    fs::create_dir_all(&files_dir)?;
+
+    let mut assets = Vec::new();
+    let mut asset_counter = HashMap::new();
+    let mut assets_with_original_urls = Vec::new();
+
+    // Process each image
+    for (image_url, alt_text) in extracted_images {
+        // Skip if it's already an assets:// URL
+        if image_url.starts_with("assets://") {
+            continue;
+        }
+
+        // Determine if it's a URL or local path
+        let is_remote = is_url(&image_url);
+
+        // Generate asset ID
+        let base_name = if is_remote {
+            // Extract filename from URL
+            Url::parse(&image_url)?
+                .path_segments()
+                .and_then(|segments| segments.last())
+                .unwrap_or("image")
+                .to_string()
+        } else {
+            // Local path
+            Path::new(&image_url)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("image")
+                .to_string()
+        };
+
+        // Ensure unique ID
+        let count = asset_counter.entry(base_name.clone()).or_insert(0);
+        let asset_id = if *count == 0 {
+            base_name.clone()
+        } else {
+            format!("{}_{}", base_name, count)
+        };
+        *count += 1;
+
+        // Determine file extension
+        let extension = if is_remote {
+            Path::new(&image_url)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or("png")
+        } else {
+            Path::new(&image_url)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or("png")
+        };
+
+        let filename = format!("{}.{}", asset_id, extension);
+
+        // Determine asset type and destination directory
+        let asset_type = get_asset_type(Path::new(&filename));
+        let subdir = get_asset_subdir(&asset_type);
+        let asset_path_in_archive = format!("assets/{}/{}", subdir, filename);
+        let asset_dest_dir = match asset_type.as_str() {
+            "image" => &images_dir,
+            "video" => &videos_dir,
+            "audio" => &audio_dir,
+            _ => &files_dir,
+        };
+        let final_asset_path = asset_dest_dir.join(&filename);
+
+        // Download or copy the image
+        if is_remote {
+            download_image(&image_url, &final_asset_path).await?;
+        } else {
+            // For local paths, resolve relative to markdown file
+            let full_image_path = if Path::new(&image_url).is_absolute() {
+                PathBuf::from(&image_url)
+            } else {
+                markdown_path.parent()
+                    .unwrap_or_else(|| Path::new("."))
+                    .join(&image_url)
+            };
+
+            copy_local_file(&full_image_path, &final_asset_path)?;
+        }
+
+        // Create asset entry
+        let asset = Asset {
+            id: asset_id,
+            path: asset_path_in_archive,
+            asset_type,
+            alt: alt_text.clone(),
+            title: None,
+        };
+
+        // Store both the asset and its original URL for later link updating
+        assets_with_original_urls.push((asset.clone(), image_url.clone()));
+        assets.push(asset);
+    }
+
+    // Create manifest
+    let original_filename = markdown_path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("index.md")
+        .to_string();
+
+    let manifest = Manifest {
+        version: "1.0.0".to_string(),
+        title: title.unwrap_or_else(|| {
+            markdown_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Untitled")
+                .to_string()
+        }),
+        author,
+        date: Some(chrono::Utc::now().date_naive().to_string()),
+        filename: original_filename.clone(),
+        assets,
+    };
+
+    // Write manifest.json
+    let manifest_path = temp_dir.join("manifest.json");
+    fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
+
+    // Update markdown content with assets:// links and write index.md
+    let updated_markdown_content = update_markdown_links(&markdown_content, &assets_with_original_urls)?;
+    let index_path = temp_dir.join("index.md");
+    fs::write(&index_path, updated_markdown_content)?;
+
+    // Create ZIP file
+    create_zip_file(&temp_dir, output_file)?;
+
+    // Clean up temporary directory
+    fs::remove_dir_all(&temp_dir)?;
+
+    Ok(())
+}
+
+/// Create a ZIP file from the given directory
+fn create_zip_file(source_dir: &Path, output_file: &str) -> Result<()> {
+    use zip::{ZipWriter, write::FileOptions};
+    use std::io::Write;
+    use std::fs::File;
+
+    let file = File::create(output_file)?;
+    let mut zip = ZipWriter::new(file);
+    let options = FileOptions::<'_, ()>::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .unix_permissions(0o755);
+
+    // Add all files to the ZIP
+    for entry in walkdir::WalkDir::new(source_dir) {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            let name = path.strip_prefix(source_dir)?;
+            let name_str = name.to_str().ok_or_else(|| anyhow!("Invalid path"))?;
+
+            zip.start_file(name_str, options)?;
+
+            let mut f = fs::File::open(path)?;
+            let mut buffer = Vec::new();
+            f.read_to_end(&mut buffer)?;
+            zip.write_all(&buffer)?;
+        }
+    }
+
+    zip.finish()?;
+    Ok(())
+}
+
+/// Convert assets:// links to local relative paths
+fn convert_assets_to_local(content: &str) -> String {
+    let mut updated_content = content.to_string();
+
+    // Update Markdown image links: ![alt](assets://path)
+    let markdown_regex = Regex::new(r#"(\!\[([^\]]*)\]\()assets://([^)]+)\)"#).unwrap();
+    updated_content = markdown_regex.replace_all(&updated_content, |caps: &regex::Captures| {
+        let alt = caps.get(2).unwrap().as_str();
+        let asset_path = caps.get(3).unwrap().as_str();
+        format!("![{}]({})", alt, asset_path)
+    }).to_string();
+
+    // Update HTML img tags: <img src="assets://path" ...>
+    let html_regex = Regex::new(r#"(<img[^>]+src=["'])assets://([^"']+)(["'][^>]*>)"#).unwrap();
+    updated_content = html_regex.replace_all(&updated_content, |caps: &regex::Captures| {
+        let prefix = caps.get(1).unwrap().as_str();
+        let asset_path = caps.get(2).unwrap().as_str();
+        let suffix = caps.get(3).unwrap().as_str();
+        format!("{}{}{}", prefix, asset_path, suffix)
+    }).to_string();
+
+    updated_content
+}
+
+/// Unpack an MDZ archive to specified directory (or current directory if None)
+pub fn unpack(input_file: &str, output_dir: Option<&str>) -> Result<()> {
+    use zip::ZipArchive;
+    use std::fs::File;
+    use std::io::{Read, Write};
+
+    let file = File::open(input_file)?;
+    let mut archive = ZipArchive::new(file)?;
+
+    // Read manifest first to get original filename
+    let manifest_content = {
+        let mut manifest_file = archive.by_name("manifest.json")?;
+        let mut content = String::new();
+        manifest_file.read_to_string(&mut content)?;
+        content
+    };
+
+    let manifest: Manifest = serde_json::from_str(&manifest_content)?;
+    let output_md_filename = manifest.filename;
+
+    // Determine output directory
+    let base_output_path = Path::new(output_dir.unwrap_or("."));
+
+    // Extract all files
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        let filepath = file.name().to_string();  // Clone the string to avoid borrow issues
+
+        // Skip manifest.json as it's only used internally
+        if filepath == "manifest.json" {
+            continue;
+        }
+
+        // For index.md, use the original filename and convert assets:// links
+        let relative_path = if filepath == "index.md" {
+            &output_md_filename
+        } else {
+            &filepath
+        };
+
+        let outpath = base_output_path.join(relative_path);
+
+        if filepath.ends_with('/') {
+            fs::create_dir_all(outpath)?;
+        } else {
+            if let Some(parent) = outpath.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            // Handle text files (Markdown) differently from binary files (images)
+            if filepath == "index.md" {
+                let mut content = String::new();
+                file.read_to_string(&mut content)?;
+                content = convert_assets_to_local(&content);
+                let mut outfile = fs::File::create(outpath)?;
+                outfile.write_all(content.as_bytes())?;
+            } else {
+                // For binary files, copy directly
+                let mut outfile = fs::File::create(outpath)?;
+                std::io::copy(&mut file, &mut outfile)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+

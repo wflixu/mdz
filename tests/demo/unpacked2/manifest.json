@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "title": "测试文档2",
+  "author": "作者",
+  "date": "2025-12-11",
+  "assets": [
+    {
+      "id": "local",
+      "path": "assets/images/local.png",
+      "type": "image",
+      "alt": "本地图片",
+      "title": null
+    },
+    {
+      "id": "other-image",
+      "path": "assets/images/other-image.svg",
+      "type": "image",
+      "alt": "另一个本地图片",
+      "title": null
+    },
+    {
+      "id": "other-image_1",
+      "path": "assets/images/other-image_1.svg",
+      "type": "image",
+      "alt": "SVG 图片示例",
+      "title": null
+    }
+  ]
+}

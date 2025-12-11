@@ -8,3 +8,14 @@ zip = "4.1"     # 用于压缩/解压
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
+reqwest = { version = "0.12", features = ["json"] }  # HTTP 客户端，用于下载图片
+tokio = { version = "1", features = ["full"] }      # 异步运行时
+url = "2.5"                                          # URL 解析
+regex = "1.10"                                       # 正则表达式，用于提取 Markdown 中的链接
+uuid = { version = "1.10", features = ["v4"] }       # 生成唯一 ID
+mime_guess = "2.0"                                   # 推断文件 MIME 类型
+chrono = "0.4"                                       # 日期时间处理
+walkdir = "2.4"                                      # 目录遍历
+
+[dev-dependencies]
+tempfile = "3.8"                                     # 临时文件/目录创建（用于测试）

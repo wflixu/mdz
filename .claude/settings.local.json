@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo check:*)",
+      "Bash(curl:*)",
+      "Bash(cargo build:*)",
+      "Bash(./target/debug/mdz pack:*)",
+      "Bash(./target/debug/mdz unpack:*)",
+      "Bash(../../target/debug/mdz pack:*)",
+      "Bash(../../target/debug/mdz unpack:*)",
+      "Bash(../../target/release/mdz unpack:*)",
+      "Bash(./target/release/mdz:*)",
+      "Bash(cargo test:*)",
+      "Bash(../../target/release/mdz pack:*)",
+      "Bash(cat:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}
