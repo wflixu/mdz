@@ -59,14 +59,21 @@ archive.mdz (ZIP archive)
 {
   "version": "1.0.0",
   "title": "Document Title",
-  "author": "Author Name",
-  "date": "2025-06-15",
+  "author": null,
+  "date": "2025-12-12",
+  "filename": "document.md",
   "assets": [
     {
       "id": "img1",
       "path": "assets/images/image1.png",
       "type": "image",
       "alt": "An example image"
+    },
+    {
+      "id": "97f524af-9d6d-4b22-8e3e-838c7ae15733",
+      "path": "assets/images/97f524af-9d6d-4b22-8e3e-838c7ae15733.png",
+      "type": "image",
+      "alt": "Downloaded network image"
     },
     {
       "id": "vid1",
@@ -80,13 +87,14 @@ archive.mdz (ZIP archive)
 
 ### Field Definitions
 
-| Field     | Type   | Required | Description                                         |
-| --------- | ------ | -------- | --------------------------------------------------- |
-| `version` | string | yes      | Specification version for compatibility             |
-| `title`   | string | yes      | Title of the document                               |
-| `author`  | string | no       | Name of the document author                         |
-| `date`    | string | no       | Publication or creation date (ISO 8601 recommended) |
-| `assets`  | array  | no       | List of embedded assets                             |
+| Field      | Type   | Required | Description                                         |
+| ---------- | ------ | -------- | --------------------------------------------------- |
+| `version`  | string | yes      | Specification version for compatibility             |
+| `title`    | string | yes      | Title of the document (defaults to filename)        |
+| `author`   | string | no       | Name of the document author                         |
+| `date`     | string | no       | Publication or creation date (ISO 8601 recommended) |
+| `filename` | string | yes      | Original filename of the markdown document          |
+| `assets`   | array  | no       | List of embedded assets                             |
 
 #### Asset Object Fields
 
@@ -156,6 +164,74 @@ Renderers or parsers MUST resolve `assets://` URIs by referring to `manifest.jso
 ## License
 
 This specification is published under the MIT License.
+
+---
+
+## Implementation: MDZ CLI Tool
+
+A reference implementation of the MDZ format is provided as a command-line tool with the following features:
+
+### Pack Command
+
+```bash
+# Basic usage - output to input_file.mdz
+mdz pack <input_file>
+
+# Specify output path
+mdz pack <input_file> --output <output_file>
+mdz pack <input_file> -o <output_file>
+```
+
+**Features:**
+- Automatically downloads network images and saves them with UUID filenames
+- Copies local images to assets directory
+- Updates all image references to use `assets://` protocol
+- Supports PNG, JPG, SVG, and other image formats
+- Handles download failures gracefully (keeps original links)
+
+### Unpack Command
+
+```bash
+# Unpack to MDZ file's parent directory (default)
+mdz unpack <input_file>
+
+# Unpack to specific directory
+mdz unpack <input_file> --output <directory>
+mdz unpack <input_file> -o <directory>
+```
+
+**Features:**
+- Restores original markdown filename
+- Converts `assets://` links to relative paths
+- Maintains directory structure
+- Preserves all asset files
+
+### Asset Handling
+
+**Network Images:**
+- Downloaded asynchronously with UUID filenames: `{uuid}.extension`
+- On download failure: original URL is preserved
+- Supported protocols: HTTP, HTTPS
+
+**Local Files:**
+- Copied with original filenames + counter to avoid conflicts
+- Resolved relative to markdown file location
+- Supports both relative and absolute paths
+
+**Example Transformation:**
+```markdown
+# Before packing:
+![local](./images/local.png)
+![network](https://example.com/image.jpg)
+
+# After packing (stored in index.md):
+![local](assets://assets/images/local.png)
+![network](assets://assets/images/12345678-1234-5678-9abc-123456789def.jpg)
+
+# After unpacking:
+![local](assets/images/local.png)
+![network](assets/images/12345678-1234-5678-9abc-123456789def.jpg)
+```
 
 ---
 
