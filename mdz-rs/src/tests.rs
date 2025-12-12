@@ -164,7 +164,7 @@ This is a test document with local images.
         let output_file = temp_path.join("test.mdz").to_str().unwrap().to_string();
         let md_file_str = md_file.to_str().unwrap();
 
-        let result = pack(md_file_str, &output_file, Some("Test Document".to_string()), Some("Test Author".to_string())).await;
+        let result = pack(md_file_str, &output_file).await;
         assert!(result.is_ok(), "Pack failed: {:?}", result.err());
 
         // 验证输出文件存在
@@ -211,7 +211,7 @@ This is a test document with local images.
         // 由于 pack 是 async，我们需要在 runtime 中运行
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
-            pack(&nonexistent_file, &output_file, None, None).await
+            pack(&nonexistent_file, &output_file).await
         });
 
         assert!(result.is_err());

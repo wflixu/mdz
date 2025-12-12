@@ -47,8 +47,6 @@ async fn test_full_pack_unpack_cycle() {
     mdz_rs::pack(
         md_file.to_str().unwrap(),
         mdz_file.to_str().unwrap(),
-        Some("集成测试".to_string()),
-        Some("测试者".to_string()),
     ).await.unwrap();
 
     // 验证 MDZ 文件存在
@@ -106,8 +104,6 @@ async fn test_empty_document() {
     mdz_rs::pack(
         md_file.to_str().unwrap(),
         mdz_file.to_str().unwrap(),
-        None,
-        None,
     ).await.unwrap();
 
     // 解包
