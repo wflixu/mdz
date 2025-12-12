@@ -181,8 +181,6 @@ fn update_markdown_links(content: &str, assets: &[(Asset, String)]) -> Result<St
 pub async fn pack(
     markdown_file: &str,
     output_file: &str,
-    title: Option<String>,
-    author: Option<String>,
 ) -> Result<()> {
     // Read the markdown file
     let markdown_path = Path::new(markdown_file);
@@ -221,33 +219,7 @@ pub async fn pack(
         // Determine if it's a URL or local path
         let is_remote = is_url(&image_url);
 
-        // Generate asset ID
-        let base_name = if is_remote {
-            // Extract filename from URL
-            Url::parse(&image_url)?
-                .path_segments()
-                .and_then(|segments| segments.last())
-                .unwrap_or("image")
-                .to_string()
-        } else {
-            // Local path
-            Path::new(&image_url)
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("image")
-                .to_string()
-        };
-
-        // Ensure unique ID
-        let count = asset_counter.entry(base_name.clone()).or_insert(0);
-        let asset_id = if *count == 0 {
-            base_name.clone()
-        } else {
-            format!("{}_{}", base_name, count)
-        };
-        *count += 1;
-
-        // Determine file extension
+        // Determine file extension first
         let extension = if is_remote {
             Path::new(&image_url)
                 .extension()
@@ -260,25 +232,68 @@ pub async fn pack(
                 .unwrap_or("png")
         };
 
-        let filename = format!("{}.{}", asset_id, extension);
+        // Generate UUID-based filename for remote images, keep original for local files
+        let (_filename, _asset_path_in_archive, should_process) = if is_remote {
+            let uuid_filename = format!("{}.{}", uuid::Uuid::new_v4(), extension);
+            let asset_type = get_asset_type(Path::new(&uuid_filename));
+            let subdir = get_asset_subdir(&asset_type);
+            let path = format!("assets/{}/{}", subdir, uuid_filename);
+            let asset_dest_dir = match asset_type.as_str() {
+                "image" => &images_dir,
+                "video" => &videos_dir,
+                "audio" => &audio_dir,
+                _ => &files_dir,
+            };
+            let final_asset_path = asset_dest_dir.join(&uuid_filename);
 
-        // Determine asset type and destination directory
-        let asset_type = get_asset_type(Path::new(&filename));
-        let subdir = get_asset_subdir(&asset_type);
-        let asset_path_in_archive = format!("assets/{}/{}", subdir, filename);
-        let asset_dest_dir = match asset_type.as_str() {
-            "image" => &images_dir,
-            "video" => &videos_dir,
-            "audio" => &audio_dir,
-            _ => &files_dir,
-        };
-        let final_asset_path = asset_dest_dir.join(&filename);
-
-        // Download or copy the image
-        if is_remote {
-            download_image(&image_url, &final_asset_path).await?;
+            // Try to download the remote image
+            match download_image(&image_url, &final_asset_path).await {
+                Ok(()) => {
+                    let asset = Asset {
+                        id: uuid_filename.clone(),
+                        path: path.clone(),
+                        asset_type,
+                        alt: alt_text.clone(),
+                        title: None,
+                    };
+                    (uuid_filename, path, Some((asset, image_url.clone())))
+                }
+                Err(e) => {
+                    // Download failed, skip this image and keep original link
+                    eprintln!("Warning: Failed to download image '{}': {}. Keeping original link.", image_url, e);
+                    continue;
+                }
+            }
         } else {
-            // For local paths, resolve relative to markdown file
+            // Local file - use original filename logic
+            let base_name = Path::new(&image_url)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("image")
+                .to_string();
+
+            // Ensure unique ID
+            let count = asset_counter.entry(base_name.clone()).or_insert(0);
+            let asset_id = if *count == 0 {
+                base_name.clone()
+            } else {
+                format!("{}_{}", base_name, count)
+            };
+            *count += 1;
+
+            let local_filename = format!("{}.{}", asset_id, extension);
+            let asset_type = get_asset_type(Path::new(&local_filename));
+            let subdir = get_asset_subdir(&asset_type);
+            let path = format!("assets/{}/{}", subdir, local_filename);
+            let asset_dest_dir = match asset_type.as_str() {
+                "image" => &images_dir,
+                "video" => &videos_dir,
+                "audio" => &audio_dir,
+                _ => &files_dir,
+            };
+            let final_asset_path = asset_dest_dir.join(&local_filename);
+
+            // Copy local file
             let full_image_path = if Path::new(&image_url).is_absolute() {
                 PathBuf::from(&image_url)
             } else {
@@ -287,21 +302,30 @@ pub async fn pack(
                     .join(&image_url)
             };
 
-            copy_local_file(&full_image_path, &final_asset_path)?;
-        }
-
-        // Create asset entry
-        let asset = Asset {
-            id: asset_id,
-            path: asset_path_in_archive,
-            asset_type,
-            alt: alt_text.clone(),
-            title: None,
+            match copy_local_file(&full_image_path, &final_asset_path) {
+                Ok(()) => {
+                    let asset = Asset {
+                        id: asset_id,
+                        path: path.clone(),
+                        asset_type,
+                        alt: alt_text.clone(),
+                        title: None,
+                    };
+                    (local_filename, path, Some((asset, image_url.clone())))
+                }
+                Err(e) => {
+                    // Copy failed, skip this image and keep original link
+                    eprintln!("Warning: Failed to copy file '{}': {}. Keeping original link.", image_url, e);
+                    continue;
+                }
+            }
         };
 
-        // Store both the asset and its original URL for later link updating
-        assets_with_original_urls.push((asset.clone(), image_url.clone()));
-        assets.push(asset);
+        // Add asset to lists if processing was successful
+        if let Some((asset, original_url)) = should_process {
+            assets_with_original_urls.push((asset.clone(), original_url));
+            assets.push(asset);
+        }
     }
 
     // Create manifest
@@ -313,14 +337,12 @@ pub async fn pack(
 
     let manifest = Manifest {
         version: "1.0.0".to_string(),
-        title: title.unwrap_or_else(|| {
-            markdown_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("Untitled")
-                .to_string()
-        }),
-        author,
+        title: markdown_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Untitled")
+            .to_string(),
+        author: None,
         date: Some(chrono::Utc::now().date_naive().to_string()),
         filename: original_filename.clone(),
         assets,
@@ -402,7 +424,9 @@ fn convert_assets_to_local(content: &str) -> String {
     updated_content
 }
 
-/// Unpack an MDZ archive to specified directory (or current directory if None)
+/// Unpack an MDZ archive to specified directory
+/// If output_dir is None, it defaults to the current directory (for backward compatibility)
+/// Note: CLI now always provides a specific output directory
 pub fn unpack(input_file: &str, output_dir: Option<&str>) -> Result<()> {
     use zip::ZipArchive;
     use std::fs::File;
