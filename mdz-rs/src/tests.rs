@@ -247,7 +247,7 @@ This is a test document with local images.
             title: "Test Document".to_string(),
             author: Some("Test Author".to_string()),
             date: Some("2025-12-11".to_string()),
-            filename: "test.md".to_string(),
+            filename: Some("test.md".to_string()),
             assets: vec![
                 Asset {
                     id: "image1".to_string(),

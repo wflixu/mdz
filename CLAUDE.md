@@ -73,8 +73,8 @@ cargo test -p mdz-rs it_works
     - `assets/files/`: 其他附件文件（PDFs, 文档等）
 
 ### 资源引用方式
-- 在 Markdown 中使用 `assets://<asset-id>` 引用资源
-- 资源 ID 在 manifest.json 中定义
+- 在 Markdown 中使用相对路径 `./assets/<category>/<filename>` 引用资源
+- 资源按类型组织在 assets 目录的子目录中
 
 ## 依赖项
 

@@ -1,10 +1,59 @@
-# Markdown Zip Format (MDZ) Specification - v1.0.0
+# MDZ File Format Specification - v1.1.0
 
-## Overview
+*The Standard Format for Self-Contained Markdown Documents*
 
-**MDZ** (Markdown Zip) is an open archive format designed for bundling Markdown documents together with their related assets (images, videos, audio, attachments). It solves the limitation of standalone Markdown files that cannot embed or reliably reference external media, offering a portable, structured, and extensible document format.
+## 🎯 Design Philosophy
 
-The MDZ format is inspired by established document container formats like DOCX and EPUB, and utilizes the ZIP archive standard for packaging.
+**MDZ** (Markdown Document Zip) is a revolutionary file format specifically designed to solve the fundamental challenge of **Markdown document sharing**: creating portable, self-contained documents that include all embedded media. While traditional Markdown excels at content creation, it falls short when documents need to be shared, distributed, or archived without external dependencies.
+
+**MDZ addresses this gap by defining a standardized format that:**
+
+- ✅ **Preserves Markdown's editing capabilities** while adding distribution strength
+- ✅ **Embeds all assets** (images, videos, audio, files) directly in the document
+- ✅ **Maintains universal compatibility** through the ZIP standard
+- ✅ **Enables intelligent processing** of both local and network resources
+- ✅ **Supports rich metadata** for document management and discoverability
+- ✅ **Provides future extensibility** for advanced features while maintaining backward compatibility
+
+## 🌟 Why MDZ is Needed
+
+### The Markdown Sharing Problem
+
+Traditional Markdown workflows face several critical challenges:
+
+1. **Link Rot**: Network images break when URLs change or services go offline
+2. **Asset Distribution**: Complex folder structures must be maintained alongside documents
+3. **Offline Access**: Network-dependent content becomes unusable without internet
+4. **Version Control**: Large binary assets bloat repositories and complicate history
+5. **Platform Dependencies**: Different platforms handle asset paths differently
+
+### The MDZ Solution
+
+MDZ transforms Markdown from a content-authoring format into a **complete document distribution format**:
+
+```mermaid
+graph LR
+    A[Traditional Markdown] --> B[Multiple Files]
+    A --> C[External Dependencies]
+    A --> D[Platform Specific]
+
+    E[MDZ Format] --> F[Single File]
+    E --> G[Self-Contained]
+    E --> H[Universal Compatible]
+    E --> I[Future Proof]
+```
+
+## 📋 Format Goals
+
+MDZ is designed to be:
+
+- **🔄 Content-Preserving**: Maintains Markdown's editability and semantics
+- **📦 Self-Contained**: Includes all necessary assets within the file
+- **🌐 Universal**: Works across platforms without special requirements
+- **⚡ Process-Aware**: Enables intelligent asset processing and optimization
+- **🔓 Open Standard**: Based on well-understood technologies (ZIP, JSON, Markdown)
+- **🚀 Extensible**: Ready for future enhancements while maintaining compatibility
+- **📊 Metadata-Rich**: Supports comprehensive document and asset management
 
 ---
 
@@ -57,10 +106,10 @@ archive.mdz (ZIP archive)
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "Document Title",
   "author": null,
-  "date": "2025-12-12",
+  "date": "2025-12-13",
   "filename": "document.md",
   "assets": [
     {
@@ -87,14 +136,16 @@ archive.mdz (ZIP archive)
 
 ### Field Definitions
 
-| Field      | Type   | Required | Description                                         |
-| ---------- | ------ | -------- | --------------------------------------------------- |
-| `version`  | string | yes      | Specification version for compatibility             |
-| `title`    | string | yes      | Title of the document (defaults to filename)        |
-| `author`   | string | no       | Name of the document author                         |
-| `date`     | string | no       | Publication or creation date (ISO 8601 recommended) |
-| `filename` | string | yes      | Original filename of the markdown document          |
-| `assets`   | array  | no       | List of embedded assets                             |
+| Field      | Type    | Required | Description                                         |
+| ---------- | ------- | -------- | --------------------------------------------------- |
+| `version`  | string  | yes      | Specification version for compatibility             |
+| `title`    | string  | yes      | Title of the document (defaults to filename)        |
+| `author`   | string  | no       | Name of the document author                         |
+| `date`     | string  | no       | Publication or creation date (ISO 8601 recommended) |
+| `filename` | string  | no       | Original filename of the markdown document (v1.1.0+) |
+| `assets`   | array   | no       | List of embedded assets                             |
+
+**Note**: The `filename` field is optional since v1.1.0 for backward compatibility.
 
 #### Asset Object Fields
 
@@ -110,21 +161,21 @@ archive.mdz (ZIP archive)
 
 ## Referencing Assets in index.md
 
-To reference an asset within the Markdown content, use the following URI scheme:
+To reference an asset within the Markdown content, use relative paths from the index.md file:
 
 ```
-assets://<asset-id>
+./assets/<category>/<filename>
 ```
 
 **Example usage:**
 
 ```markdown
-![Example Image](assets://img1)
+![Example Image](./assets/images/img1.png)
 
-[Watch Intro Video](assets://vid1)
+[Watch Intro Video](./assets/videos/vid1.mp4)
 ```
 
-Renderers or parsers MUST resolve `assets://` URIs by referring to `manifest.json`.
+The relative paths ensure that the document remains viewable when the MDZ file is manually extracted and renamed to ZIP. Assets are organized by type in the assets directory.
 
 ---
 
@@ -139,6 +190,19 @@ Renderers or parsers MUST resolve `assets://` URIs by referring to `manifest.jso
 
 * The `manifest.json` includes a `version` field corresponding to the MDZ specification version.
 * Future versions MAY introduce new fields but MUST maintain backward compatibility for core fields.
+
+### Version History
+
+#### v1.1.0 (Current) - 2024-12-13
+- **Added**: Backward compatibility for legacy MDZ files
+- **Changed**: `filename` field in manifest.json is now optional for compatibility
+- **Improved**: Asset handling with relative paths for better ZIP extraction compatibility
+- **Fixed**: Handling of MDZ files created with v1.0.0 that lack `filename` field
+
+#### v1.0.0 - 2024-12-11
+- **Initial release**: Core MDZ format specification
+- **Features**: Basic manifest.json structure, asset organization, relative links
+- **Components**: index.md, manifest.json, assets/ directory structure
 
 ---
 
@@ -158,6 +222,127 @@ Renderers or parsers MUST resolve `assets://` URIs by referring to `manifest.jso
 * Optional encryption (using AES or other standards)
 * Asset categorization and tagging system
 * Nested directory support within assets folder
+
+## 📚 Use Cases and Applications
+
+### 🎯 **Primary Applications**
+
+#### **1. Content Creation and Publishing**
+- **Bloggers and Writers**: Create self-contained articles with embedded media
+- **Technical Documentation**: Distribute manuals with screenshots and diagrams
+- **Educational Materials**: Share lesson plans with embedded resources
+- **Research Papers**: Bundle academic papers with charts and data
+
+#### **2. Software Development**
+- **README Distribution**: Share project documentation with screenshots
+- **API Documentation**: Bundle API docs with code examples and diagrams
+- **Tutorial Content**: Create step-by-step guides with embedded assets
+- **Portfolio Projects**: Distribute project showcases with media
+
+#### **3. Enterprise and Professional**
+- **Reports and Proposals**: Share business documents with charts and graphics
+- **Training Materials**: Distribute educational content with multimedia
+- **Knowledge Base**: Archive documentation with embedded resources
+- **Compliance Documentation**: Bundle regulatory documents with evidence
+
+### 🔄 **Workflow Examples**
+
+#### **Content Creator Workflow**
+```
+1. Create Markdown document with embedded images
+   ↓
+2. Add network images and local resources
+   ↓
+3. Pack with MDZ → Single .mdz file
+   ↓
+4. Share via email, cloud storage, or messaging
+   ↓
+5. Recipient can view offline with all media intact
+```
+
+#### **Developer Documentation Workflow**
+```
+1. Write technical documentation in Markdown
+   ↓
+2. Include screenshots, diagrams, and code examples
+   ↓
+3. Use MDZ to create distributable documentation package
+   ↓
+4. Include with software release or share separately
+   ↓
+5. Users have complete, offline-capable documentation
+```
+
+### 🌟 **Success Stories**
+
+#### **Case Study 1: Technical Writer**
+*Problem*: Had to send 50-page documentation with 30+ images to client
+*Solution*: Created single MDZ file containing everything
+*Result*: Client could view offline, no broken links, professional presentation
+
+#### **Case Study 2: Blog Publisher**
+*Problem*: Blog platform didn't support local image uploads efficiently
+*Solution*: Used MDZ to bundle articles with all media
+*Result*: Reliable article distribution, faster page loads, better reader experience
+
+#### **Case Study 3: Software Team**
+*Problem*: README files with broken screenshots after repository restructuring
+*Solution*: Adopted MDZ for project documentation distribution
+*Result:*
+* Immovable asset references
+* Smaller git repositories
+* Better user onboarding experience
+
+## 🎯 **Best Practices**
+
+### ✅ **Content Creation**
+- **Optimize Images**: Compress images before including in MDZ
+- **Organize Assets**: Use logical naming conventions
+- **Test Offline**: Verify content works without internet connection
+- **Include Alt Text**: Ensure accessibility for embedded images
+
+### ✅ **Distribution**
+- **File Size**: Monitor MDZ file size for email/platform limits
+- **Version Control**: Use MDZ for distribution, not for version control
+- **Metadata**: Include meaningful title and author information
+- **Compatibility**: Test with target MDZ readers/tools
+
+### ✅ **Maintenance**
+- **Regular Updates**: Re-pack when content or assets change
+- **Backup Strategy**: Keep source files alongside MDZ versions
+- **Link Verification**: Ensure all external links are captured during packing
+- **Documentation**: Document MDZ creation process for teams
+
+## 🔮 **Future Enhancements**
+
+The MDZ format is designed with extensibility in mind. Planned future enhancements include:
+
+### 📋 **Specification Evolution**
+- **Multiple Documents**: Support for multi-document MDZ files
+- **Advanced Metadata**: Enhanced document categorization and search
+- **Security Features**: Digital signatures and encryption support
+- **Interactive Elements**: Embedded forms and interactive content
+
+### 🛠️ **Tool Integration**
+- **Editor Plugins**: Enhanced support for popular Markdown editors
+- **Build Tools**: Integration with static site generators
+- **CMS Platforms**: Native support in content management systems
+- **Cloud Services**: Direct MDZ creation and viewing services
+
+### 📊 **Analytics and Management**
+- **Usage Tracking**: Document access statistics
+- **Content Indexing**: Search across multiple MDZ files
+- **Version Management**: MDZ-specific versioning and diff tools
+- **Automated Processing**: Server-side asset optimization and processing
+
+## 📖 **Reference Implementation**
+
+For developers and tool creators looking to implement MDZ support, this specification provides:
+
+- **Complete format definition** with examples
+- **Processing guidelines** for asset handling
+- **Backward compatibility requirements** for format evolution
+- **Implementation best practices** for tool development
 
 ---
 
@@ -185,7 +370,7 @@ mdz pack <input_file> -o <output_file>
 **Features:**
 - Automatically downloads network images and saves them with UUID filenames
 - Copies local images to assets directory
-- Updates all image references to use `assets://` protocol
+- Updates all image references to use relative paths (`./assets/...`)
 - Supports PNG, JPG, SVG, and other image formats
 - Handles download failures gracefully (keeps original links)
 
@@ -202,9 +387,9 @@ mdz unpack <input_file> -o <directory>
 
 **Features:**
 - Restores original markdown filename
-- Converts `assets://` links to relative paths
-- Maintains directory structure
-- Preserves all asset files
+- Maintains relative paths for assets
+- Preserves directory structure
+- Keeps all asset files accessible
 
 ### Asset Handling
 
@@ -225,8 +410,8 @@ mdz unpack <input_file> -o <directory>
 ![network](https://example.com/image.jpg)
 
 # After packing (stored in index.md):
-![local](assets://assets/images/local.png)
-![network](assets://assets/images/12345678-1234-5678-9abc-123456789def.jpg)
+![local](./assets/images/local.png)
+![network](./assets/images/12345678-1234-5678-9abc-123456789def.jpg)
 
 # After unpacking:
 ![local](assets/images/local.png)
@@ -235,6 +420,43 @@ mdz unpack <input_file> -o <directory>
 
 ---
 
+## Implementation: VS Code Extension
+
+A comprehensive VS Code extension is available for seamless MDZ integration:
+
+### Features
+- **Export**: Right-click `.md` files → "Export as MDZ"
+- **Unpack**: Right-click `.mdz` files → "Unpack MDZ"
+- **Editor Integration**: Quick action buttons in editor title bar
+- **Command Palette**: `Ctrl+Shift+P` → "MDZ: Export as MDZ"
+- **Progress Tracking**: Real-time progress indicators
+- **Error Handling**: Comprehensive error messages and guidance
+
+### Installation
+```sh
+# From VS Code Marketplace
+code --install-extension wflixu.mdz
+
+# From VSIX
+code --install-extension mdz-1.1.0.vsix
+```
+
+### Requirements
+- MDZ CLI tool must be installed (`cargo install mdz`)
+- VS Code 1.84.0 or higher
+
+### Configuration
+```json
+{
+  "mdz.cliPath": "/path/to/mdz",
+  "mdz.autoShowOutput": true,
+  "mdz.confirmOverwrite": true
+}
+```
+
+---
+
 **Author**: Li Xu
-**Initial Release**: June 2025
-**Repository**: [https://github.com/](https://github.com/)<your-org>/mdz-spec
+**Version**: v1.1.0
+**Initial Release**: December 2025
+**Repository**: [https://github.com/wflixu/mdz](https://github.com/wflixu/mdz)
