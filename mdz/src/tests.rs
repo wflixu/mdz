@@ -2,12 +2,16 @@
 mod tests {
     use tempfile::TempDir;
     use predicates::prelude::*;
+    use assert_cmd::Command;
+
+    #[allow(deprecated)]
+    fn cargo_bin(name: &str) -> Command {
+        Command::cargo_bin(name).unwrap()
+    }
 
     #[test]
     fn test_cli_help() {
-        // Build the binary first to ensure it exists
-        assert_cmd::Command::cargo_bin("mdz")
-            .unwrap()
+        cargo_bin("mdz")
             .arg("--help")
             .assert()
             .success()
@@ -17,8 +21,7 @@ mod tests {
 
     #[test]
     fn test_cli_version() {
-        assert_cmd::Command::cargo_bin("mdz")
-            .unwrap()
+        cargo_bin("mdz")
             .arg("--version")
             .assert()
             .success()
@@ -28,8 +31,7 @@ mod tests {
 
     #[test]
     fn test_cli_pack_help() {
-        assert_cmd::Command::cargo_bin("mdz")
-            .unwrap()
+        cargo_bin("mdz")
             .arg("pack")
             .arg("--help")
             .assert()
@@ -39,8 +41,7 @@ mod tests {
 
     #[test]
     fn test_cli_unpack_help() {
-        assert_cmd::Command::cargo_bin("mdz")
-            .unwrap()
+        cargo_bin("mdz")
             .arg("unpack")
             .arg("--help")
             .assert()
@@ -55,8 +56,7 @@ mod tests {
 
         let output_file = temp_path.join("test.mdz");
 
-        assert_cmd::Command::cargo_bin("mdz")
-            .unwrap()
+        cargo_bin("mdz")
             .arg("pack")
             .arg("nonexistent.md")
             .arg("--output").arg(output_file.to_str().unwrap())
@@ -71,8 +71,7 @@ mod tests {
 
         let output_dir = temp_path.join("output");
 
-        assert_cmd::Command::cargo_bin("mdz")
-            .unwrap()
+        cargo_bin("mdz")
             .arg("unpack")
             .arg("nonexistent.mdz")
             .arg("--output").arg(output_dir.to_str().unwrap())
