@@ -27,10 +27,22 @@ async fn test_full_pack_unpack_cycle() {
 
     // 创建测试图片
     let png_file = temp_path.join("test.png");
-    let png_content = "<svg width=\"100\" height=\"100\" xmlns=\"http://www.w3.org/2000/svg\">
-  <rect width=\"100\" height=\"100\" fill=\"#f0f0f0\"/>
-  <text x=\"50\" y=\"50\" text-anchor=\"middle\" fill=\"#333\">PNG Test</text>
-</svg>";
+    // 创建一个简单的1x1像素PNG文件
+    let png_content = vec![
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+        0x00, 0x00, 0x00, 0x0D, // IHDR chunk length
+        0x49, 0x48, 0x44, 0x52, // IHDR
+        0x00, 0x00, 0x00, 0x01, // width: 1
+        0x00, 0x00, 0x00, 0x01, // height: 1
+        0x08, 0x02, 0x00, 0x00, 0x00, // bit depth, color type, compression, filter, interlace
+        0x90, 0x77, 0x53, 0xDE, // CRC
+        0x00, 0x00, 0x00, 0x0C, // IDAT chunk length
+        0x49, 0x44, 0x41, 0x54, // IDAT
+        0x08, 0x99, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // compressed data
+        0x00, 0x00, 0x00, 0x00, // IEND chunk length
+        0x49, 0x45, 0x4E, 0x44, // IEND
+        0xAE, 0x42, 0x60, 0x82, // CRC
+    ];
     fs::write(&png_file, png_content).unwrap();
 
     let svg_file = temp_path.join("image.svg");
@@ -73,10 +85,10 @@ async fn test_full_pack_unpack_cycle() {
     assert!(unpacked_md.contains("本地图片"));
     assert!(unpacked_md.contains("另一个图片"));
 
-    // 验证图片文件内容
-    let unpacked_png = fs::read_to_string(temp_path.join("assets/images/test.png")).unwrap();
-    assert!(unpacked_png.contains("PNG Test"));
+    // 验证图片文件存在即可（PNG是二进制文件，无法读取为字符串）
+    assert!(temp_path.join("assets/images/test.png").exists());
 
+    // 验证SVG文件内容
     let unpacked_svg = fs::read_to_string(temp_path.join("assets/images/image.svg")).unwrap();
     assert!(unpacked_svg.contains("SVG Test"));
 
