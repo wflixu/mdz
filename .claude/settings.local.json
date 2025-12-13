@@ -22,7 +22,16 @@
       "Bash(../target/debug/mdz:*)",
       "Bash(cargo clippy:*)",
       "Bash(git tag:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm install)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm run compile:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npm install:*)",
+      "Bash(npx @vscode/vsce package:*)",
+      "Bash(pnpm exec vsce:*)",
+      "Bash(ls:*)",
+      "Bash(unzip:*)"
     ]
   }
 }

@@ -29,7 +29,7 @@ pub struct Manifest {
     pub title: String,
     pub author: Option<String>,
     pub date: Option<String>,
-    pub filename: String,  // 原始 Markdown 文件名
+    pub filename: Option<String>,  // 原始 Markdown 文件名 (向后兼容)
     pub assets: Vec<Asset>,
 }
 
@@ -346,7 +346,7 @@ pub async fn pack(
             .to_string(),
         author: None,
         date: Some(chrono::Utc::now().date_naive().to_string()),
-        filename: original_filename.clone(),
+        filename: Some(original_filename.clone()),
         assets,
     };
 
@@ -446,7 +446,15 @@ pub fn unpack(input_file: &str, output_dir: Option<&str>) -> Result<()> {
     };
 
     let manifest: Manifest = serde_json::from_str(&manifest_content)?;
-    let output_md_filename = manifest.filename;
+    let output_md_filename = manifest.filename.unwrap_or_else(|| {
+        // 向后兼容：如果没有 filename 字段，从输入文件路径推导
+        let input_path = Path::new(input_file);
+        input_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("index")
+            .to_string() + ".md"
+    });
 
     // Determine output directory
     let base_output_path = Path::new(output_dir.unwrap_or("."));

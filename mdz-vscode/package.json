@@ -1,0 +1,127 @@
+{
+  "name": "mdz",
+  "displayName": "MDZ - Markdown Zip",
+  "description": "Export Markdown files to MDZ format and unpack MDZ archives",
+  "version": "1.1.0",
+  "publisher": "wflixu",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wflixu/mdz"
+  },
+  "homepage": "https://github.com/wflixu/mdz",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "mdz",
+    "zip",
+    "export",
+    "pack",
+    "unpack"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "workspaceContains:**/*.mdz"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mdz.exportFile",
+        "title": "Export as MDZ",
+        "icon": "$(file-zip)"
+      },
+      {
+        "command": "mdz.exportAs",
+        "title": "Export as MDZ (Custom Name)...",
+        "icon": "$(save)"
+      },
+      {
+        "command": "mdz.unpackFile",
+        "title": "Unpack MDZ",
+        "icon": "$(folder-opened)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mdz.exportFile",
+          "when": "resourceExtname == .md",
+          "group": "navigation"
+        },
+        {
+          "command": "mdz.unpackFile",
+          "when": "resourceExtname == .mdz",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "mdz.exportFile",
+          "when": "resourceExtname == .md",
+          "group": "1_modification"
+        },
+        {
+          "command": "mdz.unpackFile",
+          "when": "resourceExtname == .mdz",
+          "group": "1_modification"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "mdz.exportFile",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "mdz.exportAs",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "mdz.unpackFile",
+          "when": "resourceExtname == .mdz"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "MDZ",
+      "properties": {
+        "mdz.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom path to mdz CLI executable"
+        },
+        "mdz.autoShowOutput": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically show output panel when executing commands"
+        },
+        "mdz.confirmOverwrite": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show confirmation dialog before overwriting existing files"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "18.x",
+    "@types/vscode": "^1.84.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/vsce": "^3.7.1",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0"
+  }
+}
