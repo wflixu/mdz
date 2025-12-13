@@ -64,36 +64,33 @@ async fn test_full_pack_unpack_cycle() {
     // 验证 MDZ 文件存在
     assert!(mdz_file.exists());
 
-    // 切换到临时目录进行解包
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(&temp_path).unwrap();
+    // 创建解包输出目录
+    let unpack_dir = temp_path.join("unpack_output");
+    fs::create_dir_all(&unpack_dir).unwrap();
 
-    // 运行 unpack 命令（输出到当前目录）
+    // 运行 unpack 命令（输出到指定目录）
     mdz_rs::unpack(
         mdz_file.to_str().unwrap(),
-        None,
+        Some(unpack_dir.to_str().unwrap()),
     ).unwrap();
 
-    // 验证解包后的文件结构（输出到当前目录）
-    assert!(temp_path.join("test.md").exists());
-    assert!(temp_path.join("assets/images/test.png").exists());
-    assert!(temp_path.join("assets/images/image.svg").exists());
+    // 验证解包后的文件结构
+    assert!(unpack_dir.join("test.md").exists());
+    assert!(unpack_dir.join("assets/images/test.png").exists());
+    assert!(unpack_dir.join("assets/images/image.svg").exists());
 
     // 验证解包后的 md 内容
-    let unpacked_md = fs::read_to_string(temp_path.join("test.md")).unwrap();
+    let unpacked_md = fs::read_to_string(unpack_dir.join("test.md")).unwrap();
     assert!(unpacked_md.contains("集成测试文档"));
     assert!(unpacked_md.contains("本地图片"));
     assert!(unpacked_md.contains("另一个图片"));
 
     // 验证图片文件存在即可（PNG是二进制文件，无法读取为字符串）
-    assert!(temp_path.join("assets/images/test.png").exists());
+    assert!(unpack_dir.join("assets/images/test.png").exists());
 
     // 验证SVG文件内容
-    let unpacked_svg = fs::read_to_string(temp_path.join("assets/images/image.svg")).unwrap();
+    let unpacked_svg = fs::read_to_string(unpack_dir.join("assets/images/image.svg")).unwrap();
     assert!(unpacked_svg.contains("SVG Test"));
-
-    // 恢复原始目录
-    std::env::set_current_dir(original_dir).unwrap();
 }
 
 #[tokio::test]
