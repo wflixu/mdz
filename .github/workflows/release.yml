@@ -79,15 +79,33 @@ jobs:
       - name: Publish mdz-rs to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: cargo publish -p mdz-rs
+        run: |
+          if cargo publish --dry-run -p mdz-rs; then
+            echo "Publishing mdz-rs to crates.io..."
+            cargo publish -p mdz-rs
+          else
+            echo "mdz-rs ${{ steps.version.outputs.VERSION }} already exists, skipping publish"
+          fi
 
       - name: Wait for mdz-rs to be available
-        run: sleep 30
+        run: |
+          if cargo publish --dry-run -p mdz-rs >/dev/null 2>&1; then
+            echo "New mdz-rs version published, waiting..."
+            sleep 30
+          else
+            echo "mdz-rs version already exists, no need to wait"
+          fi
 
       - name: Publish mdz to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: cargo publish -p mdz
+        run: |
+          if cargo publish --dry-run -p mdz; then
+            echo "Publishing mdz to crates.io..."
+            cargo publish -p mdz
+          else
+            echo "mdz ${{ steps.version.outputs.VERSION }} already exists, skipping publish"
+          fi
 
   # 构建 GitHub Releases
   release:
