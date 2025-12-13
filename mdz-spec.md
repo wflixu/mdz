@@ -1,10 +1,10 @@
-# Markdown Zip Format (MDZ) Specification - v1.0.0
+# Markdown Zip Format (MDZ) Specification - v1.1.0
 
 ## Overview
 
 **MDZ** (Markdown Zip) is an open archive format designed for bundling Markdown documents together with their related assets (images, videos, audio, attachments). It solves the limitation of standalone Markdown files that cannot embed or reliably reference external media, offering a portable, structured, and extensible document format.
 
-The MDZ format is inspired by established document container formats like DOCX and EPUB, and utilizes the ZIP archive standard for packaging.
+The MDZ format is inspired by established document container formats like DOCX and EPUB, and utilizes the ZIP archive standard for packaging. **v1.1.0** introduces backward compatibility improvements and refined asset handling.
 
 ---
 
@@ -57,10 +57,10 @@ archive.mdz (ZIP archive)
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "Document Title",
   "author": null,
-  "date": "2025-12-12",
+  "date": "2025-12-13",
   "filename": "document.md",
   "assets": [
     {
@@ -87,14 +87,16 @@ archive.mdz (ZIP archive)
 
 ### Field Definitions
 
-| Field      | Type   | Required | Description                                         |
-| ---------- | ------ | -------- | --------------------------------------------------- |
-| `version`  | string | yes      | Specification version for compatibility             |
-| `title`    | string | yes      | Title of the document (defaults to filename)        |
-| `author`   | string | no       | Name of the document author                         |
-| `date`     | string | no       | Publication or creation date (ISO 8601 recommended) |
-| `filename` | string | yes      | Original filename of the markdown document          |
-| `assets`   | array  | no       | List of embedded assets                             |
+| Field      | Type    | Required | Description                                         |
+| ---------- | ------- | -------- | --------------------------------------------------- |
+| `version`  | string  | yes      | Specification version for compatibility             |
+| `title`    | string  | yes      | Title of the document (defaults to filename)        |
+| `author`   | string  | no       | Name of the document author                         |
+| `date`     | string  | no       | Publication or creation date (ISO 8601 recommended) |
+| `filename` | string  | no       | Original filename of the markdown document (v1.1.0+) |
+| `assets`   | array   | no       | List of embedded assets                             |
+
+**Note**: The `filename` field is optional since v1.1.0 for backward compatibility.
 
 #### Asset Object Fields
 
@@ -139,6 +141,19 @@ The relative paths ensure that the document remains viewable when the MDZ file i
 
 * The `manifest.json` includes a `version` field corresponding to the MDZ specification version.
 * Future versions MAY introduce new fields but MUST maintain backward compatibility for core fields.
+
+### Version History
+
+#### v1.1.0 (Current) - 2024-12-13
+- **Added**: Backward compatibility for legacy MDZ files
+- **Changed**: `filename` field in manifest.json is now optional for compatibility
+- **Improved**: Asset handling with relative paths for better ZIP extraction compatibility
+- **Fixed**: Handling of MDZ files created with v1.0.0 that lack `filename` field
+
+#### v1.0.0 - 2024-12-11
+- **Initial release**: Core MDZ format specification
+- **Features**: Basic manifest.json structure, asset organization, relative links
+- **Components**: index.md, manifest.json, assets/ directory structure
 
 ---
 
@@ -235,6 +250,43 @@ mdz unpack <input_file> -o <directory>
 
 ---
 
+## Implementation: VS Code Extension
+
+A comprehensive VS Code extension is available for seamless MDZ integration:
+
+### Features
+- **Export**: Right-click `.md` files → "Export as MDZ"
+- **Unpack**: Right-click `.mdz` files → "Unpack MDZ"
+- **Editor Integration**: Quick action buttons in editor title bar
+- **Command Palette**: `Ctrl+Shift+P` → "MDZ: Export as MDZ"
+- **Progress Tracking**: Real-time progress indicators
+- **Error Handling**: Comprehensive error messages and guidance
+
+### Installation
+```sh
+# From VS Code Marketplace
+code --install-extension wflixu.mdz
+
+# From VSIX
+code --install-extension mdz-1.1.0.vsix
+```
+
+### Requirements
+- MDZ CLI tool must be installed (`cargo install mdz`)
+- VS Code 1.84.0 or higher
+
+### Configuration
+```json
+{
+  "mdz.cliPath": "/path/to/mdz",
+  "mdz.autoShowOutput": true,
+  "mdz.confirmOverwrite": true
+}
+```
+
+---
+
 **Author**: Li Xu
-**Initial Release**: June 2025
-**Repository**: [https://github.com/](https://github.com/)<your-org>/mdz-spec
+**Version**: v1.1.0
+**Initial Release**: December 2025
+**Repository**: [https://github.com/wflixu/mdz](https://github.com/wflixu/mdz)
