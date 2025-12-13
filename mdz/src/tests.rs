@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod tests {
     use tempfile::TempDir;
-    use assert_cmd::Command;
     use predicates::prelude::*;
 
     #[test]
     fn test_cli_help() {
-        let mut cmd = Command::cargo_bin("mdz").unwrap();
-        cmd.arg("--help");
-
-        cmd.assert()
+        // Build the binary first to ensure it exists
+        assert_cmd::Command::cargo_bin("mdz")
+            .unwrap()
+            .arg("--help")
+            .assert()
             .success()
             .stdout(predicate::str::contains("mdz"))
             .stdout(predicate::str::contains("Usage"));
@@ -17,10 +17,10 @@ mod tests {
 
     #[test]
     fn test_cli_version() {
-        let mut cmd = Command::cargo_bin("mdz").unwrap();
-        cmd.arg("--version");
-
-        cmd.assert()
+        assert_cmd::Command::cargo_bin("mdz")
+            .unwrap()
+            .arg("--version")
+            .assert()
             .success()
             .stdout(predicate::str::contains("mdz"))
             .stdout(predicate::str::contains("1.0.0"));
@@ -28,22 +28,22 @@ mod tests {
 
     #[test]
     fn test_cli_pack_help() {
-        let mut cmd = Command::cargo_bin("mdz").unwrap();
-        cmd.arg("pack")
-            .arg("--help");
-
-        cmd.assert()
+        assert_cmd::Command::cargo_bin("mdz")
+            .unwrap()
+            .arg("pack")
+            .arg("--help")
+            .assert()
             .success()
             .stdout(predicate::str::contains("pack"));
     }
 
     #[test]
     fn test_cli_unpack_help() {
-        let mut cmd = Command::cargo_bin("mdz").unwrap();
-        cmd.arg("unpack")
-            .arg("--help");
-
-        cmd.assert()
+        assert_cmd::Command::cargo_bin("mdz")
+            .unwrap()
+            .arg("unpack")
+            .arg("--help")
+            .assert()
             .success()
             .stdout(predicate::str::contains("unpack"));
     }
@@ -55,12 +55,13 @@ mod tests {
 
         let output_file = temp_path.join("test.mdz");
 
-        let mut cmd = Command::cargo_bin("mdz").unwrap();
-        cmd.arg("pack")
+        assert_cmd::Command::cargo_bin("mdz")
+            .unwrap()
+            .arg("pack")
             .arg("nonexistent.md")
-            .arg("--output").arg(output_file.to_str().unwrap());
-
-        cmd.assert().failure();
+            .arg("--output").arg(output_file.to_str().unwrap())
+            .assert()
+            .failure();
     }
 
     #[test]
@@ -70,11 +71,12 @@ mod tests {
 
         let output_dir = temp_path.join("output");
 
-        let mut cmd = Command::cargo_bin("mdz").unwrap();
-        cmd.arg("unpack")
+        assert_cmd::Command::cargo_bin("mdz")
+            .unwrap()
+            .arg("unpack")
             .arg("nonexistent.mdz")
-            .arg("--output").arg(output_dir.to_str().unwrap());
-
-        cmd.assert().failure();
+            .arg("--output").arg(output_dir.to_str().unwrap())
+            .assert()
+            .failure();
     }
 }
