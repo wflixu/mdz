@@ -1,8 +1,12 @@
-# Test Document
+# 集成测试文档
 
-This is a test document with local images.
+这是一个测试文档，包含多种类型的资源。
 
-![Local Image 1](./image1.png)
-![Local Image 2](./graphic.svg)
+## 图片
 
-<img src="./image3.jpg" alt="HTML Image">
+![本地图片](assets/images/test.png)
+![另一个图片](assets/images/image.svg)
+
+## 多媒体
+
+这个文档将被打包和解包。

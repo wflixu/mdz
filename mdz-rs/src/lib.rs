@@ -106,6 +106,9 @@ fn extract_images_from_markdown(content: &str) -> Vec<(String, Option<String>)> 
         r#"<img[^>]+src=["']([^"']+)["'][^>]*>"#,
     ];
 
+    // Pre-compile regex for extracting alt attribute
+    let alt_regex = Regex::new(r#"alt=["']([^"']*)["']"#).unwrap();
+
     for pattern in patterns {
         let regex = Regex::new(pattern).unwrap();
         for captures in regex.captures_iter(content) {
@@ -121,7 +124,6 @@ fn extract_images_from_markdown(content: &str) -> Vec<(String, Option<String>)> 
                     let url = captures.get(1).unwrap().as_str().to_string();
                     // Try to extract alt attribute from the full match
                     let full_match = captures.get(0).unwrap().as_str();
-                    let alt_regex = Regex::new(r#"alt=["']([^"']*)["']"#).unwrap();
                     let alt = alt_regex.captures(full_match)
                         .and_then(|c| c.get(1))
                         .map(|m| m.as_str().to_string());

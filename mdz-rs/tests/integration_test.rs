@@ -56,7 +56,7 @@ async fn test_full_pack_unpack_cycle() {
     let original_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(&temp_path).unwrap();
 
-    // 运行 unpack 命令
+    // 运行 unpack 命令（输出到当前目录）
     mdz_rs::unpack(
         mdz_file.to_str().unwrap(),
         None,

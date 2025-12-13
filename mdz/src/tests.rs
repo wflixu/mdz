@@ -23,7 +23,7 @@ mod tests {
         cmd.assert()
             .success()
             .stdout(predicate::str::contains("mdz"))
-            .stdout(predicate::str::contains("0.1.0"));
+            .stdout(predicate::str::contains("1.0.0"));
     }
 
     #[test]
@@ -57,8 +57,8 @@ mod tests {
 
         let mut cmd = Command::cargo_bin("mdz").unwrap();
         cmd.arg("pack")
-            .arg("-i").arg("nonexistent.md")
-            .arg("-o").arg(output_file.to_str().unwrap());
+            .arg("nonexistent.md")
+            .arg("--output").arg(output_file.to_str().unwrap());
 
         cmd.assert().failure();
     }
@@ -72,8 +72,8 @@ mod tests {
 
         let mut cmd = Command::cargo_bin("mdz").unwrap();
         cmd.arg("unpack")
-            .arg("-i").arg("nonexistent.mdz")
-            .arg("-o").arg(output_dir.to_str().unwrap());
+            .arg("nonexistent.mdz")
+            .arg("--output").arg(output_dir.to_str().unwrap());
 
         cmd.assert().failure();
     }

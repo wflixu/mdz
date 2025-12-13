@@ -16,7 +16,11 @@
       "Bash(python3:*)",
       "Bash(mkdir:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(cargo run:*)",
+      "Bash(../target/debug/mdz pack:*)",
+      "Bash(../target/debug/mdz:*)",
+      "Bash(cargo clippy:*)"
     ]
   }
 }

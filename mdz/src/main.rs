@@ -10,7 +10,7 @@ mod tests;
 #[derive(Parser)]
 #[command(name = "mdz")]
 #[command(about = "A CLI tool for MDZ (Markdown Zip) format")]
-#[command(version = "0.1.0")]
+#[command(version = "1.0.0")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -61,11 +61,10 @@ async fn main() -> Result<()> {
 
             // Create output directory if needed
             let output_path = Path::new(&output_file);
-            if let Some(parent) = output_path.parent() {
-                if !parent.exists() {
+            if let Some(parent) = output_path.parent()
+                && !parent.exists() {
                     fs::create_dir_all(parent)?;
                 }
-            }
 
             println!("Packing '{}' into '{}'...", input, output_file);
 
