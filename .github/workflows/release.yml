@@ -1,0 +1,189 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 测试所有平台和 Rust 版本
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        rust: [stable, beta]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests
+        run: cargo test --verbose --all-features
+
+      - name: Run clippy
+        run: cargo clippy --all-features -- -D warnings
+
+  # 发布到 crates.io
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Verify version matches
+        run: |
+          # 检查库版本是否匹配标签
+          LIB_VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | select(.name == "mdz-rs") | .version')
+          if [ "$LIB_VERSION" != "${{ steps.version.outputs.VERSION }}" ]; then
+            echo "Version mismatch: tag is ${{ steps.version.outputs.VERSION }}, but library version is $LIB_VERSION"
+            exit 1
+          fi
+
+      - name: Publish mdz-rs to crates.io
+        run: cargo publish -p mdz-rs --token ${{ secrets.CRATES_IO_TOKEN }}
+
+      - name: Wait for mdz-rs to be available
+        run: sleep 30
+
+      - name: Publish mdz to crates.io
+        run: cargo publish -p mdz --token ${{ secrets.CRATES_IO_TOKEN }}
+
+  # 构建 GitHub Releases
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl,x86_64-pc-windows-gnu,x86_64-apple-darwin
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build for Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install musl-tools
+          cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: Build for Windows
+        run: cargo build --release --target x86_64-pc-windows-gnu
+
+      - name: Build for macOS
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+
+          # Linux binary
+          cp target/x86_64-unknown-linux-musl/release/mdz release/mdz-linux-x86_64
+          tar -C release -czf release/mdz-linux-x86_64.tar.gz mdz-linux-x86_64
+
+          # Windows binary
+          cp target/x86_64-pc-windows-gnu/release/mdz.exe release/mdz-windows-x86_64.exe
+          cd release && zip -r mdz-windows-x86_64.zip mdz-windows-x86_64.exe && cd ..
+
+          # macOS binary
+          cp target/x86_64-apple-darwin/release/mdz release/mdz-macos-x86_64
+          tar -C release -czf release/mdz-macos-x86_64.tar.gz mdz-macos-x86_64
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            # 提取最新版本的 changelog
+            awk '/^## \[/ { if (found) exit; found=1; next } found' CHANGELOG.md > CHANGELOG_LATEST.md
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            cat CHANGELOG_LATEST.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            echo "See [README.md](README.md) for usage information." >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: MDZ ${{ github.ref_name }}
+          body: |
+            ## MDZ ${{ github.ref_name }}
+
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            ### Installation
+
+            #### Cargo
+            ```bash
+            cargo install mdz
+            ```
+
+            #### Binary Downloads
+
+            Download the appropriate binary for your platform:
+            - Linux: `mdz-linux-x86_64.tar.gz`
+            - Windows: `mdz-windows-x86_64.zip`
+            - macOS: `mdz-macos-x86_64.tar.gz`
+
+            After downloading, extract the archive and place the `mdz` binary in your PATH.
+
+            ### Verification
+
+            You can verify the installation by running:
+            ```bash
+            mdz --version
+            ```
+          files: |
+            release/mdz-linux-x86_64.tar.gz
+            release/mdz-windows-x86_64.zip
+            release/mdz-macos-x86_64.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
