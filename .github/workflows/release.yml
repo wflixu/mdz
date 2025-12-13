@@ -77,13 +77,17 @@ jobs:
           fi
 
       - name: Publish mdz-rs to crates.io
-        run: cargo publish -p mdz-rs --token ${{ secrets.CRATES_IO_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish -p mdz-rs
 
       - name: Wait for mdz-rs to be available
         run: sleep 30
 
       - name: Publish mdz to crates.io
-        run: cargo publish -p mdz --token ${{ secrets.CRATES_IO_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish -p mdz
 
   # 构建 GitHub Releases
   release:

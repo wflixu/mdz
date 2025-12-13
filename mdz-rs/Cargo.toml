@@ -2,6 +2,13 @@
 name = "mdz-rs"
 version = "1.0.0"
 edition = "2024"
+description = "A Rust library and CLI tool for defining, packaging, and unpacking a custom Markdown-based file format with embedded resources"
+license = "MIT"
+repository = "https://github.com/wflixu/mdz"
+homepage = "https://github.com/wflixu/mdz"
+documentation = "https://github.com/wflixu/mdz#readme"
+keywords = ["markdown", "zip", "archive", "mdz", "packaging"]
+categories = ["compression", "command-line-utilities", "text-processing"]
 
 [dependencies]
 zip = "4.1"     # 用于压缩/解压

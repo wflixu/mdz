@@ -2,6 +2,12 @@
 name = "mdz"
 version = "1.0.0"
 edition = "2024"
+description = "CLI tool for MDZ (Markdown Zip) format - packs and unpacks markdown documents with embedded assets"
+license = "MIT"
+repository = "https://github.com/wflixu/mdz"
+homepage = "https://github.com/wflixu/mdz"
+keywords = ["markdown", "zip", "cli", "mdz", "archive"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
