@@ -137,15 +137,15 @@ fn extract_images_from_markdown(content: &str) -> Vec<(String, Option<String>)> 
     images
 }
 
-/// Update markdown content to use assets:// links
+/// Update markdown content to use relative paths to assets
 fn update_markdown_links(content: &str, assets: &[(Asset, String)]) -> Result<String> {
     let mut updated_content = content.to_string();
 
-    // Create a mapping from original URLs to new assets:// URLs
+    // Create a mapping from original URLs to new relative paths (./assets/...)
     let mut url_mapping: HashMap<String, String> = HashMap::new();
 
     for (asset, original_url) in assets {
-        let new_url = format!("assets://{}", asset.path);
+        let new_url = format!("./{}", asset.path);
         url_mapping.insert(original_url.clone(), new_url);
     }
 

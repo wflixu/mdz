@@ -110,21 +110,21 @@ archive.mdz (ZIP archive)
 
 ## Referencing Assets in index.md
 
-To reference an asset within the Markdown content, use the following URI scheme:
+To reference an asset within the Markdown content, use relative paths from the index.md file:
 
 ```
-assets://<asset-id>
+./assets/<category>/<filename>
 ```
 
 **Example usage:**
 
 ```markdown
-![Example Image](assets://img1)
+![Example Image](./assets/images/img1.png)
 
-[Watch Intro Video](assets://vid1)
+[Watch Intro Video](./assets/videos/vid1.mp4)
 ```
 
-Renderers or parsers MUST resolve `assets://` URIs by referring to `manifest.json`.
+The relative paths ensure that the document remains viewable when the MDZ file is manually extracted and renamed to ZIP. Assets are organized by type in the assets directory.
 
 ---
 
@@ -185,7 +185,7 @@ mdz pack <input_file> -o <output_file>
 **Features:**
 - Automatically downloads network images and saves them with UUID filenames
 - Copies local images to assets directory
-- Updates all image references to use `assets://` protocol
+- Updates all image references to use relative paths (`./assets/...`)
 - Supports PNG, JPG, SVG, and other image formats
 - Handles download failures gracefully (keeps original links)
 
@@ -202,9 +202,9 @@ mdz unpack <input_file> -o <directory>
 
 **Features:**
 - Restores original markdown filename
-- Converts `assets://` links to relative paths
-- Maintains directory structure
-- Preserves all asset files
+- Maintains relative paths for assets
+- Preserves directory structure
+- Keeps all asset files accessible
 
 ### Asset Handling
 
@@ -225,8 +225,8 @@ mdz unpack <input_file> -o <directory>
 ![network](https://example.com/image.jpg)
 
 # After packing (stored in index.md):
-![local](assets://assets/images/local.png)
-![network](assets://assets/images/12345678-1234-5678-9abc-123456789def.jpg)
+![local](./assets/images/local.png)
+![network](./assets/images/12345678-1234-5678-9abc-123456789def.jpg)
 
 # After unpacking:
 ![local](assets/images/local.png)
