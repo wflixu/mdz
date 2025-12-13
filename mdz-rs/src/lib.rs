@@ -1,3 +1,56 @@
+//! # MDZ - Markdown Zip Library
+//!
+//! A Rust library for creating and working with MDZ (Markdown Zip) files.
+//! MDZ is a ZIP-based archive format that bundles Markdown documents with their
+//! embedded assets (images, videos, audio, and other files) into a single, portable file.
+//!
+//! ## Features
+//!
+//! - **Automatic Asset Processing**: Download network images and copy local files
+//! - **Smart Link Resolution**: Convert absolute paths to relative paths for maximum compatibility
+//! - **UUID-based Naming**: Use UUIDs for downloaded assets to avoid conflicts
+//! - **Backward Compatibility**: Handle legacy MDZ files seamlessly
+//! - **Rich Metadata**: Complete manifest with document and asset information
+//!
+//! ## Quick Start
+//!
+//! ```rust,no_run
+//! use mdz_rs::{pack, unpack};
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Pack a markdown file with assets
+//!     pack("document.md", "document.mdz").await?;
+//!
+//!     // Unpack MDZ file to extract content and assets
+//!     unpack("document.mdz", Some("output/"))?;
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## MDZ Format Structure
+//!
+//! ```text
+//! document.mdz (ZIP archive)
+//! ├── index.md              # Updated markdown with relative asset links
+//! ├── manifest.json         # Metadata and asset mapping
+//! └── assets/               # Organized asset files
+//!     ├── images/
+//!     ├── videos/
+//!     ├── audio/
+//!     └── files/
+//! ```
+//!
+//! ## Asset Handling
+//!
+//! The library automatically processes:
+//!
+//! - **Network Images**: Downloaded asynchronously with UUID filenames
+//! - **Local Files**: Copied with conflict resolution (counter suffixes)
+//! - **Link Updates**: Markdown links are updated to use relative paths (`./assets/...`)
+//! - **Metadata**: Complete manifest.json with asset mapping and document info
+
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
@@ -11,29 +64,103 @@ use url::Url;
 #[cfg(test)]
 mod tests;
 
-/// Asset information stored in manifest.json
+/// Represents an embedded asset within an MDZ archive.
+///
+/// Assets are stored in the manifest.json file and reference actual files
+/// within the archive's assets/ directory.
+///
+/// # Examples
+///
+/// ```json
+/// {
+///   "id": "image1",
+///   "path": "assets/images/image1.png",
+///   "type": "image",
+///   "alt": "Example image",
+///   "title": "A sample image"
+/// }
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Asset {
+    /// Unique identifier for the asset, used for internal reference
     pub id: String,
+
+    /// Relative path to the asset file within the MDZ archive
     pub path: String,
+
+    /// Type of the asset (image, video, audio, file)
     #[serde(rename = "type")]
     pub asset_type: String,
+
+    /// Alt text for images (accessibility)
     pub alt: Option<String>,
+
+    /// Title or description of the asset
     pub title: Option<String>,
 }
 
-/// Manifest.json structure
+/// Manifest structure for MDZ files.
+///
+/// The manifest.json file contains metadata about the document and all embedded assets.
+/// It's stored in the root of the MDZ archive and provides information about the
+/// original document structure.
+///
+/// # Examples
+///
+/// ```json
+/// {
+///   "version": "1.1.0",
+///   "title": "My Document",
+///   "author": "John Doe",
+///   "date": "2025-12-13",
+///   "filename": "document.md",
+///   "assets": [...]
+/// }
+/// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Manifest {
+    /// MDZ specification version (e.g., "1.1.0")
     pub version: String,
+
+    /// Document title
     pub title: String,
+
+    /// Document author (optional)
     pub author: Option<String>,
+
+    /// Creation or modification date (ISO 8601 format, optional)
     pub date: Option<String>,
-    pub filename: Option<String>,  // 原始 Markdown 文件名 (向后兼容)
+
+    /// Original markdown filename (optional since v1.1.0)
+    pub filename: Option<String>,
+
+    /// List of all embedded assets
     pub assets: Vec<Asset>,
 }
 
-/// Determines if a path is a URL or a local path
+/// Determines if a given path is a URL or a local file path.
+///
+/// This function uses URL parsing to determine if the provided string represents
+/// a valid URL (HTTP, HTTPS, FTP, etc.) or a local file system path.
+///
+/// # Arguments
+///
+/// * `path` - The path string to check
+///
+/// # Returns
+///
+/// Returns `true` if the path is a valid URL, `false` otherwise.
+///
+/// # Examples
+///
+/// ```
+/// use mdz_rs::is_url;
+///
+/// assert!(is_url("https://example.com/image.jpg"));
+/// assert!(is_url("http://localhost:8080/file.pdf"));
+/// assert!(!is_url("./local/image.png"));
+/// assert!(!is_url("/absolute/path/file.jpg"));
+/// ```
 pub fn is_url(path: &str) -> bool {
     Url::parse(path).is_ok()
 }
@@ -179,7 +306,49 @@ fn update_markdown_links(content: &str, assets: &[(Asset, String)]) -> Result<St
     Ok(updated_content)
 }
 
-/// Pack a Markdown file and its assets into an MDZ archive
+/// Packs a Markdown file and its assets into an MDZ archive.
+///
+/// This function reads a markdown file, extracts all referenced assets, downloads
+/// network images, copies local files, updates links to use relative paths, and
+/// bundles everything into a single MDZ file.
+///
+/// # Arguments
+///
+/// * `markdown_file` - Path to the source markdown file
+/// * `output_file` - Path where the MDZ file should be created
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success, or an error if packing fails.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The markdown file cannot be read
+/// - Network images cannot be downloaded
+/// - Local files cannot be copied
+/// - The MDZ file cannot be created
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use mdz_rs::pack;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     pack("document.md", "document.mdz").await?;
+///     println!("Successfully packed document.mdz");
+///     Ok(())
+/// }
+/// ```
+///
+/// # Asset Processing
+///
+/// The function automatically handles:
+/// - **Network Images**: Downloaded with UUID filenames (e.g., `12345678-... .jpg`)
+/// - **Local Files**: Copied with conflict resolution (adds counter suffixes)
+/// - **Link Updates**: Updated to use relative paths (`./assets/...`)
+/// - **Directory Structure**: Organized by type in `assets/` subdirectories
 pub async fn pack(
     markdown_file: &str,
     output_file: &str,
@@ -426,9 +595,50 @@ fn convert_assets_to_local(content: &str) -> String {
     updated_content
 }
 
-/// Unpack an MDZ archive to specified directory
-/// If output_dir is None, it defaults to the current directory (for backward compatibility)
-/// Note: CLI now always provides a specific output directory
+/// Unpacks an MDZ archive to extract the markdown file and embedded assets.
+///
+/// This function reads a MDZ file, extracts the manifest to determine the original
+/// filename, and extracts all files to the specified directory. It handles both
+/// v1.1.0 (with filename field) and v1.0.0 (without filename field) MDZ files.
+///
+/// # Arguments
+///
+/// * `input_file` - Path to the MDZ file to unpack
+/// * `output_dir` - Directory where files should be extracted (None for parent directory)
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success, or an error if unpacking fails.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The MDZ file cannot be opened or is not a valid ZIP archive
+/// - The manifest.json file is missing or malformed
+/// - Files cannot be extracted to the output directory
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use mdz_rs::unpack;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // Unpack to current directory
+///     unpack("document.mdz", None)?;
+///
+///     // Unpack to specific directory
+///     unpack("document.mdz", Some("output/"))?;
+///
+///     println!("Successfully unpacked MDZ file");
+///     Ok(())
+/// }
+/// ```
+///
+/// # Backward Compatibility
+///
+/// This function handles MDZ files created with different specification versions:
+/// - **v1.1.0+**: Uses the filename field from manifest.json
+/// - **v1.0.0**: Derives filename from the MDZ file basename
 pub fn unpack(input_file: &str, output_dir: Option<&str>) -> Result<()> {
     use zip::ZipArchive;
     use std::fs::File;
