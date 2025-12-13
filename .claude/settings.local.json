@@ -20,7 +20,9 @@
       "Bash(cargo run:*)",
       "Bash(../target/debug/mdz pack:*)",
       "Bash(../target/debug/mdz:*)",
-      "Bash(cargo clippy:*)"
+      "Bash(cargo clippy:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)"
     ]
   }
 }
