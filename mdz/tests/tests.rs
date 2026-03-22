@@ -1,5 +1,98 @@
+//! Integration tests for mdz CLI and library
+//!
+//! This file contains both CLI command tests and library API tests.
+//! Uses CARGO_BIN_EXE_mdz environment variable for robust binary lookup
+//! that works with custom build-dir configurations.
+
 use std::fs;
+use std::env;
 use tempfile::TempDir;
+use predicates::prelude::*;
+use assert_cmd::Command;
+
+// ============================================================================
+// CLI Tests
+// ============================================================================
+
+/// Get the mdz command using the compile-time binary path
+/// This approach is robust to custom build-dir configurations
+fn mdz_cmd() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_mdz"))
+}
+
+#[test]
+fn test_cli_help() {
+    mdz_cmd()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("mdz"))
+        .stdout(predicate::str::contains("Usage"));
+}
+
+#[test]
+fn test_cli_version() {
+    mdz_cmd()
+        .arg("--version")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("mdz"))
+        .stdout(predicate::str::contains("1.0.0"));
+}
+
+#[test]
+fn test_cli_pack_help() {
+    mdz_cmd()
+        .arg("pack")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("pack"));
+}
+
+#[test]
+fn test_cli_unpack_help() {
+    mdz_cmd()
+        .arg("unpack")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("unpack"));
+}
+
+#[test]
+fn test_cli_pack_nonexistent_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let temp_path = temp_dir.path();
+
+    let output_file = temp_path.join("test.mdz");
+
+    mdz_cmd()
+        .arg("pack")
+        .arg("nonexistent.md")
+        .arg("--output").arg(output_file.to_str().unwrap())
+        .assert()
+        .failure();
+}
+
+#[test]
+fn test_cli_unpack_nonexistent_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let temp_path = temp_dir.path();
+
+    let output_dir = temp_path.join("output");
+
+    mdz_cmd()
+        .arg("unpack")
+        .arg("nonexistent.mdz")
+        .arg("--output").arg(output_dir.to_str().unwrap())
+        .assert()
+        .failure();
+}
+
+// ============================================================================
+// Library API Tests
+// ============================================================================
 
 #[tokio::test]
 async fn test_full_pack_unpack_cycle() {
@@ -27,7 +120,7 @@ async fn test_full_pack_unpack_cycle() {
 
     // 创建测试图片
     let png_file = temp_path.join("test.png");
-    // 创建一个简单的1x1像素PNG文件
+    // 创建一个简单的 1x1 像素 PNG 文件
     let png_content = vec![
         0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
         0x00, 0x00, 0x00, 0x0D, // IHDR chunk length
@@ -85,10 +178,10 @@ async fn test_full_pack_unpack_cycle() {
     assert!(unpacked_md.contains("本地图片"));
     assert!(unpacked_md.contains("另一个图片"));
 
-    // 验证图片文件存在即可（PNG是二进制文件，无法读取为字符串）
+    // 验证图片文件存在即可（PNG 是二进制文件，无法读取为字符串）
     assert!(unpack_dir.join("assets/images/test.png").exists());
 
-    // 验证SVG文件内容
+    // 验证 SVG 文件内容
     let unpacked_svg = fs::read_to_string(unpack_dir.join("assets/images/image.svg")).unwrap();
     assert!(unpacked_svg.contains("SVG Test"));
 }

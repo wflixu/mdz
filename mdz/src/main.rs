@@ -3,10 +3,6 @@ use anyhow::Result;
 use std::path::Path;
 use std::fs;
 
-// 包含测试模块
-#[cfg(test)]
-mod tests;
-
 #[derive(Parser)]
 #[command(name = "mdz")]
 #[command(about = "A CLI tool for MDZ (Markdown Zip) format")]
