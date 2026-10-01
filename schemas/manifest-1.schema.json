@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/wflixu/mdz/main/schemas/manifest-1.schema.json",
+  "title": "MDZ manifest, version 1.x",
+  "description": "manifest.json of an MDZ package (ZIP archive with index.md, manifest.json and assets/), following the MDZ specification v1.1.0 by wflixu (https://github.com/wflixu/mdz). Unknown properties are allowed for forward compatibility; custom extensions should use 'x-' prefixed keys.",
+  "type": "object",
+  "required": [
+    "version",
+    "title"
+  ],
+  "properties": {
+    "version": {
+      "description": "MDZ specification version (semantic version). This schema covers major version 1.",
+      "type": "string",
+      "pattern": "^1\\.(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*))?$"
+    },
+    "title": {
+      "description": "Document title (defaults to the file name).",
+      "type": "string"
+    },
+    "author": {
+      "description": "Document author name.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "date": {
+      "description": "Publication or creation date (ISO 8601 recommended).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "subject": {
+      "description": "Subject of the document (Dublin Core dc:subject).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description": {
+      "description": "Summary or abstract of the document (dc:description).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "keywords": {
+      "description": "Keywords.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "language": {
+      "description": "Language of the document as a BCP 47 tag, e.g. \"fr\" or \"en-GB\" (dc:language).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "license": {
+      "description": "Licence of the document, preferably an SPDX identifier such as \"CC-BY-4.0\".",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "filename": {
+      "description": "Original Markdown file name (v1.1.0+).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assets": {
+      "description": "Embedded assets.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "relativePath": {
+      "description": "Archive-relative path: no leading slash, no backslash, no '..' segment.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![/\\\\])(?!.*\\\\)(?!(.*/)?\\.\\.(/|$)).+$"
+    },
+    "asset": {
+      "type": "object",
+      "required": [
+        "id",
+        "path",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "description": "Unique identifier of the asset.",
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "type": {
+          "description": "Asset category: image, video, audio, file, ...",
+          "type": "string",
+          "minLength": 1
+        },
+        "alt": {
+          "description": "Alternative text for images.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Title or caption.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

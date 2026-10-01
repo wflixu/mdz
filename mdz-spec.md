@@ -143,6 +143,11 @@ archive.mdz (ZIP archive)
 | `author`   | string  | no       | Name of the document author                         |
 | `date`     | string  | no       | Publication or creation date (ISO 8601 recommended) |
 | `filename` | string  | no       | Original filename of the markdown document (v1.1.0+) |
+| `subject`     | string   | no | Subject of the document (proposed)                         |
+| `description` | string   | no | Summary or abstract (proposed)                             |
+| `keywords`    | string[] | no | Keywords (proposed)                                        |
+| `language`    | string   | no | BCP 47 language tag, e.g. `fr`, `en-GB` (proposed)         |
+| `license`     | string   | no | Licence, preferably an SPDX identifier such as `CC-BY-4.0` (proposed) |
 | `assets`   | array   | no       | List of embedded assets                             |
 
 **Note**: The `filename` field is optional since v1.1.0 for backward compatibility.
@@ -176,6 +181,22 @@ To reference an asset within the Markdown content, use relative paths from the i
 ```
 
 The relative paths ensure that the document remains viewable when the MDZ file is manually extracted and renamed to ZIP. Assets are organized by type in the assets directory.
+
+### JSON Schema
+
+A machine-readable [JSON Schema](https://json-schema.org/) (draft 2020-12)
+for version 1.x manifests is available at
+[`schemas/manifest-1.schema.json`](schemas/manifest-1.schema.json).
+Producers SHOULD validate the manifest they write against it; consumers MAY
+use it to reject malformed packages. The schema allows unknown properties,
+in line with the compatibility rules below.
+
+### Path safety
+
+Asset `path` values and relative links in `index.md` MUST be relative to the
+archive root: they MUST NOT start with `/`, contain a backslash (`\`) or a
+`..` segment. Consumers MUST NOT resolve paths that violate these rules
+(protection against "zip-slip" path traversal when extracting).
 
 ---
 
