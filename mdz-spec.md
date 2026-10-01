@@ -177,6 +177,22 @@ To reference an asset within the Markdown content, use relative paths from the i
 
 The relative paths ensure that the document remains viewable when the MDZ file is manually extracted and renamed to ZIP. Assets are organized by type in the assets directory.
 
+### JSON Schema
+
+A machine-readable [JSON Schema](https://json-schema.org/) (draft 2020-12)
+for version 1.x manifests is available at
+[`schemas/manifest-1.schema.json`](schemas/manifest-1.schema.json).
+Producers SHOULD validate the manifest they write against it; consumers MAY
+use it to reject malformed packages. The schema allows unknown properties,
+in line with the compatibility rules below.
+
+### Path safety
+
+Asset `path` values and relative links in `index.md` MUST be relative to the
+archive root: they MUST NOT start with `/`, contain a backslash (`\`) or a
+`..` segment. Consumers MUST NOT resolve paths that violate these rules
+(protection against "zip-slip" path traversal when extracting).
+
 ---
 
 ## Compression Method
