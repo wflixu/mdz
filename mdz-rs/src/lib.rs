@@ -134,6 +134,26 @@ pub struct Manifest {
     /// Original markdown filename (optional since v1.1.0)
     pub filename: Option<String>,
 
+    /// Subject of the document (optional document property)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
+
+    /// Summary or abstract (optional document property)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    /// Keywords (optional document property)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
+
+    /// Language as a BCP 47 tag such as "fr" or "en-GB" (optional document property)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+
+    /// Licence, preferably an SPDX identifier such as "CC-BY-4.0" (optional document property)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+
     /// List of all embedded assets
     pub assets: Vec<Asset>,
 }
@@ -516,6 +536,11 @@ pub async fn pack(
         author: None,
         date: Some(chrono::Utc::now().date_naive().to_string()),
         filename: Some(original_filename.clone()),
+        subject: None,
+        description: None,
+        keywords: None,
+        language: None,
+        license: None,
         assets,
     };
 

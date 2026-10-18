@@ -248,6 +248,11 @@ This is a test document with local images.
             author: Some("Test Author".to_string()),
             date: Some("2025-12-11".to_string()),
             filename: Some("test.md".to_string()),
+            subject: None,
+            description: None,
+            keywords: None,
+            language: None,
+            license: None,
             assets: vec![
                 Asset {
                     id: "image1".to_string(),
@@ -279,5 +284,53 @@ This is a test document with local images.
         assert_eq!(deserialized.assets.len(), manifest.assets.len());
         assert_eq!(deserialized.assets[0].id, manifest.assets[0].id);
         assert_eq!(deserialized.assets[1].id, manifest.assets[1].id);
+    }
+
+    #[test]
+    fn test_manifest_document_properties() {
+        // Optional document properties are read when present...
+        let json = r#"{
+            "version": "1.1.0",
+            "title": "Rapport annuel",
+            "author": "Ada Lovelace",
+            "date": "2026-09-30",
+            "subject": "Bilan",
+            "description": "Résumé des activités 2026",
+            "keywords": ["bilan", "énergie"],
+            "language": "fr",
+            "license": "CC-BY-4.0",
+            "filename": "index.md",
+            "assets": []
+        }"#;
+        let manifest: Manifest = serde_json::from_str(json).unwrap();
+        assert_eq!(manifest.subject.as_deref(), Some("Bilan"));
+        assert_eq!(
+            manifest.description.as_deref(),
+            Some("Résumé des activités 2026")
+        );
+        assert_eq!(
+            manifest.keywords,
+            Some(vec!["bilan".to_string(), "énergie".to_string()])
+        );
+        assert_eq!(manifest.language.as_deref(), Some("fr"));
+        assert_eq!(manifest.license.as_deref(), Some("CC-BY-4.0"));
+
+        // ...round-trip...
+        let again: Manifest =
+            serde_json::from_str(&serde_json::to_string(&manifest).unwrap()).unwrap();
+        assert_eq!(again.keywords, manifest.keywords);
+
+        // ...and are neither required nor written when absent.
+        let minimal: Manifest =
+            serde_json::from_str(r#"{"version": "1.1.0", "title": "T", "assets": []}"#).unwrap();
+        assert!(
+            minimal.subject.is_none() && minimal.keywords.is_none() && minimal.license.is_none()
+        );
+        let written = serde_json::to_string(&minimal).unwrap();
+        assert!(
+            !written.contains("subject")
+                && !written.contains("keywords")
+                && !written.contains("license")
+        );
     }
 }

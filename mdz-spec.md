@@ -143,6 +143,11 @@ archive.mdz (ZIP archive)
 | `author`   | string  | no       | Name of the document author                         |
 | `date`     | string  | no       | Publication or creation date (ISO 8601 recommended) |
 | `filename` | string  | no       | Original filename of the markdown document (v1.1.0+) |
+| `subject`     | string   | no | Subject of the document (proposed)                         |
+| `description` | string   | no | Summary or abstract (proposed)                             |
+| `keywords`    | string[] | no | Keywords (proposed)                                        |
+| `language`    | string   | no | BCP 47 language tag, e.g. `fr`, `en-GB` (proposed)         |
+| `license`     | string   | no | Licence, preferably an SPDX identifier such as `CC-BY-4.0` (proposed) |
 | `assets`   | array   | no       | List of embedded assets                             |
 
 **Note**: The `filename` field is optional since v1.1.0 for backward compatibility.
